@@ -1,0 +1,66 @@
+.mood-songs {
+  padding: 30px 20px;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  color: white;
+}
+
+.mood-songs h2 {
+  text-align: center;
+  font-size: 2rem;
+  color: #a855f7;
+  margin-bottom: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.songs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.songs:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+}
+
+.title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #e2d9f3;
+}
+
+.title p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #a78bfa;
+}
+
+.play-pause-button button {
+  background: linear-gradient(90deg, #a855f7, #6366f1);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+}
+
+.play-pause-button button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.7);
+}
