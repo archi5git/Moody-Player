@@ -1,26 +1,38 @@
 const ImageKit = require("imagekit");
 
-
 const imagekit = new ImageKit({
-  publicKey:   process.env.IMAGEKIT_PUBLIC_KEY,
-  privateKey:  process.env.IMAGEKIT_PRIVATE_KEY,
+  publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
-function uploadFile(file){
-  return new Promise((resolve,reject)=>{
-    imagekit.upload({
-      file:file.buffer,
-    fileName:Math.random().toString(36).substring(),
-    folder:"Mood"
-      },(error,result)=>{
-        if(error){
-          reject(error);
 
+function uploadFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file?.buffer) {
+      reject(new Error("Invalid audio file"));
+      return;
+    }
+
+    const extension =
+      file.originalname?.split(".").pop() || "mp3";
+
+    imagekit.upload(
+      {
+        file: file.buffer,
+        fileName: `song-${Date.now()}.${extension}`,
+        folder: "/moody-player/songs",
+        useUniqueFileName: true,
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
         }
-        else{
-          resolve(result);
-        }
-      })
-  })
+
+        resolve(result);
+      }
+    );
+  });
 }
+
 module.exports = uploadFile;

@@ -1,56 +1,100 @@
-const express = require('express');
-const multer =require('multer');
-const uploadFile = require('../service/storage.service');
+const express = require("express");
+const multer = require("multer");
+
+const Song = require("../models/song.model");
+const uploadFile = require("../service/storage.service");
+
 const router = express.Router();
-const upload = multer({storage:multer.memoryStorage()});
-const songModel = require("../models/song.model")
 
-router.post('/songs', upload.single("audio"), async (req, res) => {
+const upload = multer({
+  storage: multer.memoryStorage(),
+
+  limits: {
+    fileSize: 15 * 1024 * 1024,
+  },
+
+  fileFilter: (req, file, callback) => {
+    if (!file.mimetype.startsWith("audio/")) {
+      callback(new Error("Only audio files are allowed"));
+      return;
+    }
+
+    callback(null, true);
+  },
+});
+
+// POST /api/songs
+router.post(
+  "/songs",
+  upload.single("audio"),
+  async (req, res) => {
+    try {
+      const { title, artist, mood } = req.body;
+
+      if (!title || !artist || !mood) {
+        return res.status(400).json({
+          success: false,
+          message: "Title, artist and mood are required",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Audio file is required",
+        });
+      }
+
+      const fileData = await uploadFile(req.file);
+
+      const song = await Song.create({
+        title,
+        artist,
+        mood: mood.toLowerCase(),
+        audio: fileData.url,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Song uploaded successfully",
+        song,
+      });
+    } catch (error) {
+      console.error("Song upload error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message:
+          error.message || "Unable to upload song",
+      });
+    }
+  }
+);
+
+// GET /api/songs
+router.get("/songs", async (req, res) => {
   try {
-    console.log("Body:", req.body);
-    console.log("File:", req.file);
+    const mood = req.query.mood?.toLowerCase();
 
-    if (!req.file) {
-      return res.status(400).json({ error: "Audio file missing" });
-    }
+    const filter = mood ? { mood } : {};
 
-    if (req.file.size === 0) {
-      return res.status(400).json({ error: "File is empty (size 0)" });
-    }
-
-    const fileData = await uploadFile(req.file);
-    console.log("ImageKit result:", fileData);
-
-    const song = await songModel.create({
-      title: req.body.title,
-      author: req.body.author,
-      audio: fileData.url,
-      mood: req.body.mood,
+    const songs = await Song.find(filter).sort({
+      createdAt: -1,
     });
 
-    res.status(201).json({
-      message: "song created successfully",
-      song: song,
+    return res.status(200).json({
+      success: true,
+      count: songs.length,
+      songs,
     });
+  } catch (error) {
+    console.error("Fetch songs error:", error);
 
-  } catch (err) {
-    console.error("FULL ERROR:", err); // ← terminal mein exact error aayega
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch songs",
+    });
   }
 });
 
-router.get('/songs',async(req,res)=>{
-    const mood = req.query.mood;
-    const filter = mood ? {mood: mood} :{};
-     const songs = await songModel.find(filter);
-
-     res.status(200).json({
-        message:"songs fetched successfully",
-        songs:songs,
-     })
-})
-
-
-
-
-module.exports=router;
+module.exports = router;
