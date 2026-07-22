@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import Header from "./components/Header";
 import MoodSelector from "./components/MoodSelector";
@@ -8,6 +9,9 @@ import "./App.css";
 
 function App() {
   const audioRef = useRef(null);
+
+  const API_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   const [selectedMood, setSelectedMood] = useState("");
   const [songs, setSongs] = useState([]);
@@ -33,19 +37,20 @@ function App() {
         setError("");
         setSongs([]);
 
-        const url = `http://localhost:3000/api/songs?mood=${encodeURIComponent(
-          selectedMood
-        )}`;
+        const response = await fetch(
+          `${API_URL}/api/songs?mood=${encodeURIComponent(
+            selectedMood
+          )}`
+        );
 
-        console.log("Fetching songs from:", url);
-
-        const response = await fetch(url);
         const data = await response.json();
 
-        console.log("Backend response:", data);
+        console.log("Songs API response:", data);
 
         if (!response.ok) {
-          throw new Error(data.message || "Songs fetch failed");
+          throw new Error(
+            data.message || "Unable to fetch songs"
+          );
         }
 
         const receivedSongs = Array.isArray(data)
@@ -56,7 +61,7 @@ function App() {
 
         if (receivedSongs.length === 0) {
           setError(
-            `${selectedMood} mood ke liye koi song nahi mila.`
+            `${selectedMood} mood ke liye koi song available nahi hai.`
           );
         }
       } catch (fetchError) {
@@ -64,7 +69,7 @@ function App() {
 
         setSongs([]);
         setError(
-          "Songs load nahi ho paaye. Backend check karo."
+          "Songs load nahi ho paaye. Backend URL aur deployment check karo."
         );
       } finally {
         setLoading(false);
@@ -72,7 +77,7 @@ function App() {
     };
 
     fetchSongs();
-  }, [selectedMood]);
+  }, [selectedMood, API_URL]);
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -93,9 +98,6 @@ function App() {
     if (isPlaying) {
       audioRef.current
         .play()
-        .then(() => {
-          setIsPlaying(true);
-        })
         .catch((playError) => {
           console.error("Audio play error:", playError);
           setIsPlaying(false);
@@ -113,8 +115,6 @@ function App() {
     }
 
     const normalizedMood = mood.toLowerCase().trim();
-
-    console.log("Mood received in App:", normalizedMood);
 
     if (audioRef.current) {
       audioRef.current.pause();
@@ -161,6 +161,7 @@ function App() {
       }
     } catch (playError) {
       console.error("Audio play error:", playError);
+
       setIsPlaying(false);
       setError("Audio play nahi ho pa rahi.");
     }
