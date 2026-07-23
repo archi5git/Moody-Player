@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import Header from "./components/Header";
 import MoodSelector from "./components/MoodSelector";
@@ -16,14 +15,16 @@ function App() {
   const [selectedMood, setSelectedMood] = useState("");
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
-
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    console.log("API URL:", API_URL);
+  }, [API_URL]);
 
   useEffect(() => {
     if (!selectedMood) {
@@ -35,42 +36,30 @@ function App() {
       try {
         setLoading(true);
         setError("");
-        setSongs([]);
 
-        const response = await fetch(
-          `${API_URL}/api/songs?mood=${encodeURIComponent(
-            selectedMood
-          )}`
-        );
+        const requestUrl =
+          `${API_URL}/api/songs?mood=${encodeURIComponent(selectedMood)}`;
 
+        console.log("Request URL:", requestUrl);
+
+        const response = await fetch(requestUrl);
         const data = await response.json();
 
-        console.log("Songs API response:", data);
+        console.log("Songs response:", data);
 
         if (!response.ok) {
-          throw new Error(
-            data.message || "Unable to fetch songs"
-          );
+          throw new Error(data.message || "Unable to fetch songs");
         }
 
-        const receivedSongs = Array.isArray(data)
-          ? data
-          : data.songs || [];
+        setSongs(data.songs || []);
 
-        setSongs(receivedSongs);
-
-        if (receivedSongs.length === 0) {
-          setError(
-            `${selectedMood} mood ke liye koi song available nahi hai.`
-          );
+        if (!data.songs || data.songs.length === 0) {
+          setError(`${selectedMood} mood ke songs nahi mile.`);
         }
-      } catch (fetchError) {
-        console.error("Songs fetch error:", fetchError);
-
+      } catch (err) {
+        console.error("Fetch error:", err);
         setSongs([]);
-        setError(
-          "Songs load nahi ho paaye. Backend URL aur deployment check karo."
-        );
+        setError(err.message || "Songs load nahi ho paaye.");
       } finally {
         setLoading(false);
       }
@@ -80,146 +69,98 @@ function App() {
   }, [selectedMood, API_URL]);
 
   useEffect(() => {
-    if (!audioRef.current) {
-      return;
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
     }
-
-    audioRef.current.volume = volume;
   }, [volume]);
 
   useEffect(() => {
-    if (!currentSong || !audioRef.current) {
-      return;
-    }
+    if (!currentSong || !audioRef.current) return;
 
     audioRef.current.src = currentSong.audio;
     audioRef.current.load();
 
     if (isPlaying) {
-      audioRef.current
-        .play()
-        .catch((playError) => {
-          console.error("Audio play error:", playError);
-          setIsPlaying(false);
-        });
+      audioRef.current.play().catch(() => {
+        setIsPlaying(false);
+      });
     }
   }, [currentSong]);
 
-  const getSongId = (song) => {
-    return song?._id || song?.id;
-  };
+  const getSongId = (song) => song?._id || song?.id;
 
   const handleMoodChange = (mood) => {
-    if (!mood) {
-      return;
-    }
+    if (!mood) return;
 
     const normalizedMood = mood.toLowerCase().trim();
 
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current.removeAttribute("src");
-      audioRef.current.load();
     }
 
     setSelectedMood(normalizedMood);
     setCurrentSong(null);
     setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
     setError("");
   };
 
   const handleSongPlay = (song) => {
-    const selectedSongId = getSongId(song);
-    const currentSongId = getSongId(currentSong);
-
-    if (selectedSongId === currentSongId) {
+    if (getSongId(song) === getSongId(currentSong)) {
       handlePlayPause();
       return;
     }
 
     setCurrentSong(song);
     setIsPlaying(true);
-    setCurrentTime(0);
-    setError("");
   };
 
   const handlePlayPause = async () => {
-    if (!currentSong || !audioRef.current) {
-      return;
-    }
+    if (!currentSong || !audioRef.current) return;
 
-    try {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        await audioRef.current.play();
-        setIsPlaying(true);
-      }
-    } catch (playError) {
-      console.error("Audio play error:", playError);
-
+    if (isPlaying) {
+      audioRef.current.pause();
       setIsPlaying(false);
-      setError("Audio play nahi ho pa rahi.");
+    } else {
+      await audioRef.current.play();
+      setIsPlaying(true);
     }
   };
 
   const handleNext = () => {
-    if (!currentSong || songs.length === 0) {
-      return;
-    }
+    if (!currentSong || songs.length === 0) return;
 
-    const currentSongId = getSongId(currentSong);
-
-    const currentIndex = songs.findIndex(
-      (song) => getSongId(song) === currentSongId
+    const index = songs.findIndex(
+      (song) => getSongId(song) === getSongId(currentSong)
     );
 
-    const nextIndex =
-      currentIndex === -1
-        ? 0
-        : (currentIndex + 1) % songs.length;
+    const nextIndex = (index + 1) % songs.length;
 
     setCurrentSong(songs[nextIndex]);
     setIsPlaying(true);
-    setCurrentTime(0);
-    setError("");
   };
 
   const handlePrevious = () => {
-    if (!currentSong || songs.length === 0) {
-      return;
-    }
+    if (!currentSong || songs.length === 0) return;
 
-    const currentSongId = getSongId(currentSong);
-
-    const currentIndex = songs.findIndex(
-      (song) => getSongId(song) === currentSongId
+    const index = songs.findIndex(
+      (song) => getSongId(song) === getSongId(currentSong)
     );
 
     const previousIndex =
-      currentIndex === -1
-        ? 0
-        : (currentIndex - 1 + songs.length) %
-          songs.length;
+      (index - 1 + songs.length) % songs.length;
 
     setCurrentSong(songs[previousIndex]);
     setIsPlaying(true);
-    setCurrentTime(0);
-    setError("");
   };
 
   const handleSeek = (event) => {
-    if (!audioRef.current) {
-      return;
-    }
-
     const newTime = Number(event.target.value);
 
-    audioRef.current.currentTime = newTime;
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+
     setCurrentTime(newTime);
   };
 
@@ -241,27 +182,17 @@ function App() {
           onMoodDetected={handleMoodChange}
         />
 
-        {loading && (
-          <p className="status-message">
-            Songs load ho rahe hain...
-          </p>
-        )}
+        {loading && <p>Songs load ho rahe hain...</p>}
 
-        {error && (
-          <p className="status-message error-message">
-            {error}
-          </p>
-        )}
+        {error && <p className="error-message">{error}</p>}
 
-        {!loading && (
-          <SongList
-            songs={songs}
-            selectedMood={selectedMood}
-            currentSong={currentSong}
-            isPlaying={isPlaying}
-            onPlay={handleSongPlay}
-          />
-        )}
+        <SongList
+          songs={songs}
+          selectedMood={selectedMood}
+          currentSong={currentSong}
+          isPlaying={isPlaying}
+          onPlay={handleSongPlay}
+        />
       </main>
 
       <audio
@@ -273,10 +204,6 @@ function App() {
           setDuration(event.currentTarget.duration)
         }
         onEnded={handleNext}
-        onError={() => {
-          setIsPlaying(false);
-          setError("Audio file load ya play nahi ho rahi.");
-        }}
       />
 
       <MusicPlayer
